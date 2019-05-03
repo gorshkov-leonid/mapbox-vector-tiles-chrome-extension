@@ -1,7 +1,7 @@
 {
 	"name" : "Mapbox MVT",
-	"version" : "1.0",
-	"description" : "Just-in-time parser for loaded Mapbox Vector Tiles",
+	"version" : "1.0.2",
+	"description" : "Parser for loaded Mapbox Vector Tiles",
 	"permissions" : ["declarativeContent", "storage", "activeTab", "downloads"],
 	"background" : {
 		"scripts" : ["background.js"],
