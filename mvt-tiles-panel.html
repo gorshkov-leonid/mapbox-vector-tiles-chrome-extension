@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+    <head>
+		<style>
+            html, body {
+              height: 100%;
+              margin: 0;
+              padding: 0;
+            }
+            
+            #tilesTable {
+              display: grid;
+              /*status, url, z, x, y, Σ layers, layer: Σ features, #Started, #Ended, Time*/
+              grid-template-columns: 50px 90px 90px 90px auto auto auto auto auto auto; 
+              border-bottom: solid #CCC 1px;;
+              border-left: solid #CCC 1px;;
+              box-sizing: border-box;
+              overflow-y: auto;
+              
+              height: auto;
+              max-height: calc(100% - 30px);
+              font-size:0.9em;
+              font-family: verdana, sans-serif;
+              user-select: none;
+              margin-left: 3px;
+              margin-right: 3px;
+            }
+
+            #tilesTable [role=header], #tilesTable [role=cell]{
+              border-top: solid #CCC 1px;
+              border-right: solid #CCC 1px;
+              white-space: nowrap;
+            }
+            
+            #tilesTable [role=header] {
+              font-weight: bold;
+              position: sticky;
+              top: 0;
+              background: #f9f9f9;
+              border-bottom: solid #DDD 2px;
+            }
+                
+            #tilesTable [role=header], #tilesTable [role=cell]{
+              border-top: solid #CCC 1px;
+              border-right: solid #CCC 1px;
+              white-space: nowrap;
+            }
+            
+            #tilesTable [role=header].wrap-content, #tilesTable [role=cell].wrap-content {
+              white-space: pre-wrap;
+            }
+            
+            #tilesTable [role=row] {
+               display: contents;               
+            }
+                        
+            #tilesTable [role=row].pending-tile [role=cell] {
+               color: #bebcdd;
+            }
+            
+            #tilesTable [role=row].empty-tile [role=cell] {
+               color: #bebcdd;
+            }
+            
+            #tilesTable [role=row].no-success-tile [role=cell] {
+               background-color: #fff0f0;
+               color: #bebcdd;
+            }
+
+            #tilesTable [role=row]:hover [role=cell]{
+               background-color: #ffa;        
+            }
+            
+            #tilesTable [role=row].empty-tile a,
+            #tilesTable [role=row].empty-tile a:link,
+            #tilesTable [role=row].empty-tile a:hover,
+            #tilesTable [role=row].empty-tile a:active,
+            #tilesTable [role=row].empty-tile a:visited,
+            #tilesTable [role=row].no-success-tile a,
+            #tilesTable [role=row].no-success-tile a:link,
+            #tilesTable [role=row].no-success-tile a:hover,
+            #tilesTable [role=row].no-success-tile a:active,
+            #tilesTable [role=row].no-success-tile a:visited,
+            #tilesTable [role=row].pending-tile a,
+            #tilesTable [role=row].pending-tile a:hover,
+            #tilesTable [role=row].pending-tile a:active,
+            #tilesTable [role=row].pending-tile a:visited
+            #tilesTable [role=row].pending-tile a:link,            
+            {
+               color: #bebcdd;
+            }
+
+			#settings-panel {
+               padding: 3px;
+			}
+            
+            setting-control, .setting-control  input {
+               font-family: "Segoe UI", Tahoma, sans-serif;
+               font-size: 12px;
+			}
+                        
+			.setting-control {
+			   display: inline-block;
+			   padding-right: 10px;
+			} 
+
+			.setting-control {
+			   display: inline-block;
+			   padding-right: 10px;
+			}             
+            
+	        .setting-control input[type=checkbox] {
+			      vertical-align: middle;
+            }
+
+            /*modal dialog*/
+            .modal {
+              display: none;
+              position: fixed;
+              z-index: 1;
+              left: 0;
+              top: 0;
+              width: 100%;
+              height: 100%;
+              overflow: auto;
+              background-color: rgb(0,0,0);
+              background-color: rgba(0,0,0,0.4);
+              padding: 20px 30px 3px 30px; 
+              box-sizing: border-box;
+            }
+
+            .modal-content {
+              background-color: #fefefe;
+              border: 1px solid #888;
+              height: 100%;
+              box-sizing: border-box;
+              position: relative;
+            }
+
+            .viewTileDialog_closeButton {
+              color: #aaaaaa;
+              font-size: 28px;
+              line-height: 28px;
+              font-weight: bold;
+              top: 0px;
+              right: 20px;
+              position: absolute;              
+            }
+
+            .viewTileDialog_closeButton:hover, .viewTileDialog_closeButton:focus {
+              color: #000;
+              text-decoration: none;
+              cursor: pointer;
+            }
+            
+            #viewTileContainer {
+              margin: 0;
+			  width: 100%;
+              height: 100%;
+              min-height: 25%;
+			  overflow-y: auto;
+			  border:solid #CCC 1px;
+              user-select: all;
+			  -webkit-user-select: all;
+              box-sizing: border-box;
+			}
+            
+            #mvtRequestPattern {
+               min-width: 80px;
+               max-width: 400px;
+            }
+		</style>
+    </head>
+    <body>
+	  <div id="settings-panel"> 
+	     <div class="setting-control">
+	         <a id="clear" href="javascript:void(0)">Clear</a> 
+		 </div>
+         <div class="setting-control">
+	         <label for="trackEmptyResponse">Track Empty Response</label>
+             <input type="checkbox" id="trackEmptyResponse">
+         </div>
+         <div class="setting-control">
+	         <label for="trackOnlySuccessfulResponse">Track Only Successful Responses</label>
+             <input type="checkbox" id="trackOnlySuccessfulResponse">
+         </div>         
+         <div class="setting-control">
+	         <label for="mvtRequestPattern">URL Pattern</label>
+             <input type="text" id="mvtRequestPattern">
+         </div>	         
+	  </div> 
+
+      <div id="tilesTable">
+        <div role = "header">status</div>
+        <div role = "header">z</div>			
+        <div role = "header">x</div>
+        <div role = "header">y</div>
+        <div role = "header">url</div>
+        <div role = "header" class="wrap-content">Σ layers</div>
+        <div role = "header" class="wrap-content">layer: Σ features </div>
+        <div role = "header">#Started</div>
+        <div role = "header">#Ended</div>
+        <div role = "header">Time</div>
+      </div>
+      <div id="viewTileDialog" class="modal">
+        <div class="modal-content"">
+          <span class="viewTileDialog_closeButton">&times;</span>
+          <pre id="viewTileContainer"></pre>
+        </div>
+      </div>
+	  <script src="mvt-tiles-panel.js"></script>
+    </body>
+ </html>
