@@ -29,6 +29,47 @@ function getTextWidth(text, fontSize, fontName, fontWeight) {
   return context.measureText(text).width;
 }
 
+function createViewContent(entry){
+    /*{
+        x: entry.x,
+        y: entry.y,
+        z: entry.z,,
+        status: entry.status,
+        headers: entry.headers,
+        
+        
+    }*/
+    return JSON.stringify(
+          entry, 
+          (key, value)=>{
+              if (key == 'tile') {
+                 var data = Uint8Array.from(atob(entry.tile), c => c.charCodeAt(0));
+                 if(!data.length){
+                     return {};
+                 }
+                 var tile = new VectorTile.VectorTile(new Pbf(data));
+                 var layerNames = Object.keys(tile.layers);
+                 if(!layerNames.length) {
+                     return {};
+                 }          
+                 var geoJsonLayers = {};
+                 layerNames.forEach((layerName)=>{
+                   var geoJsonLayer = geoJsonLayers[layerName] = {};
+                   var geoJsonFeatures = geoJsonLayer.features = [];
+                   var layer = tile.layers[layerName];
+                   for(var i = 0; i < layer.length; i++)
+                   {
+                      geoJsonFeatures.push(layer.feature(i).toGeoJSON(entry.x, entry.y, entry.z));
+                   }
+                 })
+                 return geoJsonLayers;
+              }
+              return value;
+        }, 
+        2
+    );
+}
+
 const adjustInputTextWidth = (input)=>{
      var style = window.getComputedStyle(input) 
      var textWidth = getTextWidth(input.value, style.fontSize, style.fontFamily, style.fontWeight);
@@ -86,7 +127,7 @@ function onDocumentClick(e){
         dialog.style.display = "none";
         if(node && node.entry) {
             setTimeout(()=>{
-                var viewConent = JSON.stringify(node.entry, null, 2);
+                var viewConent = createViewContent(node.entry);
                 dialog.style.display = "block";
                 viewTileContainer.innerHTML = viewConent;    
             }, 0)/*to see that previous content is cleared*/;
@@ -112,35 +153,22 @@ function toCell(div){
     return div;
 }
 
-var backgroundPageConnection = chrome.runtime.connect();
-backgroundPageConnection.postMessage({
-    type: "injectScript", 
-    tabId: chrome.devtools.inspectedWindow.tabId,
-    scriptToInject: "devToolContentScript.js"
-});
-
-backgroundPageConnection.onDisconnect.addListener(function() {
-    backgroundPageConnection = chrome.runtime.connect();
-});
-
 function toMvtLink(entry){
     var requestUrl = entry.url;;
-    var requestHeaders = entry.headers 
-      ? entry.headers.reduce((collector, nameValue)=>{
-          return collector[nameValue.name] = nameValue.value, collector;
-        }, {})
-      : {};  
+    var requestHeaders = entry.headers;  
     
     var url = new URL(requestUrl);
     var aText = url.pathname+url.search+url.hash;
     var a = document.createElement("a");
     a.setAttribute("href", requestUrl);
     a.addEventListener('click', function(e){
-       backgroundPageConnection.postMessage({
-          type: "downloadFile",
-          tabId: chrome.devtools.inspectedWindow.tabId,
-          requestParams: {url: requestUrl, headers: requestHeaders, fileName: entry.z + "_" + entry.x + "_" + entry.y + ".mvt"}
-       });
+      var newBlob = new Blob([Uint8Array.from(atob(entry.tile), c => c.charCodeAt(0))]);
+      const data = window.URL.createObjectURL(newBlob);
+      var link = document.createElement('a');
+      link.href = data;
+      link.download = entry.z + "_" + entry.x + "_" + entry.y + ".mvt";
+      link.click();
+      window.URL.revokeObjectURL(data);
        e.preventDefault(); 
        e.stopPropagation();
        return false;
@@ -224,13 +252,19 @@ window.redrawEntries = function(entries){
              rowNode.classList.add("no-success-tile");
         }
         else {
-            var layersNames = Object.keys(entry.tile.layers);
-            if(isNoContent || !layersNames.length)
+            var statistics = entry.statistics;
+            if(statistics)
             {
-                rowNode.classList.add("empty-tile");
+                if(isNoContent || !statistics.featuresCount)
+                {
+                    rowNode.classList.add("empty-tile");
+                }
+                layersCountNode.textContent = statistics.featuresCount ? String(statistics.featuresCount) : ""
+                var layersStatistics = statistics.byLayers;
+                featuresCountNode.textContent = Object.keys(layersStatistics).map(
+                   (layerName) => layerName + ": " + layersStatistics[layerName].featuresCount
+                ).join("\n")                      
             }
-            layersCountNode.textContent = String(layersNames.length)
-            featuresCountNode.textContent = layersNames.map((layerName) => layerName + ": " + entry.tile.layers[layerName].features.length).join("\n")            
         }
     })
     

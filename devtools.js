@@ -28,6 +28,16 @@ function removeEnrty(entry){
 	redrawEntries();
 }
 
+function isTileEmpty(tile){
+    for (var layerName in tile.layers){
+       var layer = tile.layers[layerName];
+       if(layer.length){
+          return false
+       }
+    }
+    return true;
+}
+
 let trackEmptyResponse, trackOnlySuccessfulResponse, mvtRequestPatternRegExp
 
 chrome.storage.local.onChanged.addListener(function(changes){
@@ -95,21 +105,28 @@ chrome.storage.local.get(['trackEmptyResponse', 'trackOnlySuccessfulResponse', '
 		 
           //http://qnimate.com/detecting-end-of-scrolling-in-html-element/         
           //https://stackoverflow.com/questions/8773921/how-to-automatically-scroll-down-a-html-page
-	      var t = httpEntry.startedDateTime;
+	      var time = httpEntry.time;
+	      var startedDateTime = httpEntry.startedDateTime;
+          var url = httpEntry.request.url;
+          var headers = httpEntry.request.headers 
+            ? httpEntry.request.headers.reduce((collector, nameValue)=>{
+                  return collector[nameValue.name] = nameValue.value, collector;
+            }, {})
+            : {};  
           
           const pendingEntry = {
-              x: x, 
-              y: y, 
-              z: z, 
-              status: -1,
-              url: httpEntry.request.url, 
-              headers: httpEntry.request.headers, 
-              startOrder: nStarted,
-              json: undefined, 
-              startedDateTime: httpEntry.startedDateTime, 
-              time: undefined,
-              endOrder: undefined,
-             
+            x: x, 
+            y: y, 
+            z: z, 
+            status: -1,
+            url: url, 
+            headers: headers, 
+            startOrder: nStarted,
+            startedDateTime: startedDateTime, 
+            statistics: undefined,
+            tile: undefined,
+            time: undefined,
+            endOrder: undefined,
           };
 		  addEntry(pendingEntry); 
 		  
@@ -135,28 +152,32 @@ chrome.storage.local.get(['trackEmptyResponse', 'trackOnlySuccessfulResponse', '
                 return;
             }
 
-            var geoJsonLayers = {};
-            var jsonTile = {layers: geoJsonLayers};
+            var layersStatistics = {};
+            var statistics = {layersCount: 0, featuresCount: 0, byLayers: layersStatistics /* featuresCount */ };
+            var data ;
             if(isOk){
-                var data = Uint8Array.from(atob(content), c => c.charCodeAt(0)) ;
+                data = Uint8Array.from(atob(content), c => c.charCodeAt(0)) ;
                 if(data.length){
-			        var tile = new VectorTile.VectorTile(new Pbf(data));
-                    var layerNames = Object.keys(tile.layers);
-                    if(layerNames.length) {
-                        layerNames.forEach((layerName)=>{
-                          var geoJsonLayer = geoJsonLayers[layerName] = geoJsonLayers[layerName] || {};
-                          var geoJsonFeatures = geoJsonLayer.features = geoJsonLayers[layerName].features || [];
-                          
-                          var layer = tile.layers[layerName];
-                          for(var i = 0; i < layer.length; i++)
-                          {
-                             geoJsonFeatures.push(layer.feature(i).toGeoJSON(x, y, z));
-                          }
-                        })
+			        var tile;
+                    try{
+                      tile = new VectorTile.VectorTile(new Pbf(data));    
+                    } catch (e) {
+                      console.err("Cannot read Pbf from Array", data, "(", content, ")", "Details:", e);
+                      return; 
                     }
-                    else if(!trackEmptyResponse){
+                    
+                    if(!trackEmptyResponse && isTileEmpty(tile)){
                         removeEnrty(pendingEntry);
 		  	            return;
+                    } else {
+                        var layersNames = Object.keys(tile.layers);
+                        layersNames.forEach((layerName)=>{
+                          var layer = tile.layers[layerName];
+                          var layerStatistics = statistics.byLayers[layerName] = {};
+                          layerStatistics.featuresCount = layer.length;
+                          statistics.featuresCount += layer.length;
+                        });
+                        statistics.layersCount = layersNames.length;
                     }
                 }
                 else if(!trackEmptyResponse){
@@ -165,17 +186,11 @@ chrome.storage.local.get(['trackEmptyResponse', 'trackOnlySuccessfulResponse', '
                 }
             }
 
-            updateEntry(pendingEntry, {
-              x: x, 
-              y: y,
-              z: z,
+            updateEntry(pendingEntry, {...pendingEntry,
+              statistics: statistics,
               status: httpEntry.response.status, 
-              time: httpEntry.time, 
-              startedDateTime:  httpEntry.startedDateTime, 
-              url: httpEntry.request.url, 
-              tile: jsonTile,
-              endOrder: ++endOrder,
-              startOrder: nStarted
+              tile: content,
+              endOrder: ++endOrder
             })
 		  })    
 	});

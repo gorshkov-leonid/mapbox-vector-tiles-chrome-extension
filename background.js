@@ -16,19 +16,4 @@ chrome.runtime.onInstalled.addListener(function() {
 	   actions: [new chrome.declarativeContent.ShowPageAction()]
      }]);
   });
-  
-  chrome.runtime.onConnect.addListener(function(devToolsConnection) {
-    var devToolsListener = function(event, sender, sendResponse) {
-        if(event.type == "injectScript") {
-            chrome.tabs.executeScript(event.tabId, { file: event.scriptToInject });
-        }
-        else if(event.type == "downloadFile"){
-            chrome.tabs.executeScript(event.tabId, { code: 'downloadFile(' + JSON.stringify(event.requestParams) + ')' });
-        }
-    }
-    devToolsConnection.onMessage.addListener(devToolsListener);
-    devToolsConnection.onDisconnect.addListener(function() {
-         devToolsConnection.onMessage.removeListener(devToolsListener);
-    });
-  });  
 });
