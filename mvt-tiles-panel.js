@@ -7,7 +7,7 @@ closeButton.onclick = function() {
   dialog.style.display = "none";
 }
 
-document.addEventListener("click", onDocumentClick, true);
+document.addEventListener("click", onDocumentClick);
 document.getElementById('clear').addEventListener("click", (e)=>{
     if(window.onClear){
       window.onClear();
@@ -98,6 +98,7 @@ function onDocumentClick(e){
            dialog.style.display = "none"; 
         }
     }
+    e.stopPropagation();
 }
 
 function toRow(div, entry){
@@ -111,11 +112,39 @@ function toCell(div){
     return div;
 }
 
-function toMvtLink(textUrl){
-    var url= new URL(textUrl);
+var backgroundPageConnection = chrome.runtime.connect();
+backgroundPageConnection.postMessage({
+    type: "injectScript", 
+    tabId: chrome.devtools.inspectedWindow.tabId,
+    scriptToInject: "devToolContentScript.js"
+});
+
+backgroundPageConnection.onDisconnect.addListener(function() {
+    backgroundPageConnection = chrome.runtime.connect();
+});
+
+function toMvtLink(entry){
+    var requestUrl = entry.url;;
+    var requestHeaders = entry.headers 
+      ? entry.headers.reduce((collector, nameValue)=>{
+          return collector[nameValue.name] = nameValue.value, collector;
+        }, {})
+      : {};  
+    
+    var url = new URL(requestUrl);
     var aText = url.pathname+url.search+url.hash;
     var a = document.createElement("a");
-    a.setAttribute("href", textUrl);
+    a.setAttribute("href", requestUrl);
+    a.addEventListener('click', function(e){
+       backgroundPageConnection.postMessage({
+          type: "downloadFile",
+          tabId: chrome.devtools.inspectedWindow.tabId,
+          requestParams: {url: requestUrl, headers: requestHeaders, fileName: entry.z + "_" + entry.x + "_" + entry.y + ".mvt"}
+       });
+       e.preventDefault(); 
+       e.stopPropagation();
+       return false;
+    }); 
     a.textContent = aText;
     return a;
 }
@@ -171,7 +200,7 @@ window.redrawEntries = function(entries){
 
         statusNode.textContent = entry.status;
         
-        urlNode.appendChild(toMvtLink(entry.url));
+        urlNode.appendChild(toMvtLink(entry));
         zNode.textContent = String(entry.z);
         xNode.textContent = String(entry.x);
         yNode.textContent = String(entry.y);

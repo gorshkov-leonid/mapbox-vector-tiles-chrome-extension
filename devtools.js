@@ -103,6 +103,7 @@ chrome.storage.local.get(['trackEmptyResponse', 'trackOnlySuccessfulResponse', '
               z: z, 
               status: -1,
               url: httpEntry.request.url, 
+              headers: httpEntry.request.headers, 
               startOrder: nStarted,
               json: undefined, 
               startedDateTime: httpEntry.startedDateTime, 
