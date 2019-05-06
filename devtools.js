@@ -38,6 +38,15 @@ function isTileEmpty(tile){
     return true;
 }
 
+
+function combineHeaders(headers/*[{name, value}]*/){
+   return headers 
+    ? headers.reduce((collector, nameValue)=>{
+          return collector[nameValue.name] = nameValue.value, collector;
+      }, {})
+    : {};
+}
+
 let trackEmptyResponse, trackOnlySuccessfulResponse, mvtRequestPatternRegExp
 
 chrome.storage.local.onChanged.addListener(function(changes){
@@ -108,11 +117,7 @@ chrome.storage.local.get(['trackEmptyResponse', 'trackOnlySuccessfulResponse', '
 	      var time = httpEntry.time;
 	      var startedDateTime = httpEntry.startedDateTime;
           var url = httpEntry.request.url;
-          var headers = httpEntry.request.headers 
-            ? httpEntry.request.headers.reduce((collector, nameValue)=>{
-                  return collector[nameValue.name] = nameValue.value, collector;
-            }, {})
-            : {};  
+          var requestHeaders = combineHeaders(httpEntry.request.headers); 
           
           const pendingEntry = {
             x: x, 
@@ -120,7 +125,7 @@ chrome.storage.local.get(['trackEmptyResponse', 'trackOnlySuccessfulResponse', '
             z: z, 
             status: -1,
             url: url, 
-            headers: headers, 
+            headers: requestHeaders, 
             startOrder: nStarted,
             startedDateTime: startedDateTime, 
             statistics: undefined,
@@ -131,6 +136,7 @@ chrome.storage.local.get(['trackEmptyResponse', 'trackOnlySuccessfulResponse', '
 		  addEntry(pendingEntry); 
 		  
 		  httpEntry.getContent(function(content, encoding){
+            var responseHeaders = combineHeaders(httpEntry.response.headers);  
             const pendingEntryIndex = entries.indexOf(pendingEntry);
             if(pendingEntryIndex == -1) {
                 return;
@@ -156,13 +162,26 @@ chrome.storage.local.get(['trackEmptyResponse', 'trackOnlySuccessfulResponse', '
             var statistics = {layersCount: 0, featuresCount: 0, byLayers: layersStatistics /* featuresCount */ };
             var data ;
             if(isOk){
+                var contentLength = Number(responseHeaders["content-length"] || responseHeaders["Content-Length"] || -1);
                 data = Uint8Array.from(atob(content), c => c.charCodeAt(0)) ;
-                if(data.length){
+                
+                if(isSuccess && contentLength >= 0 && (!content || data.length != contentLength)){
+                    var message = "Cannot read Pbf from Base64 (string " + content + ", array = " + data + ", size = " + data.length + ", expectedSize = " + contentLength + ") " +  
+                          "for tile {z: " + pendingEntry.z + ", x: "+ pendingEntry.x + ", y"+ pendingEntry.y + "}";
+                    console.error(message);
+                    chrome.devtools.inspectedWindow.eval("console.error('" + message + "')");
+                    return;                    
+                }
+                
+                if(content && data.length){
 			        var tile;
                     try{
                       tile = new VectorTile.VectorTile(new Pbf(data));    
                     } catch (e) {
-                      console.err("Cannot read Pbf from Array", data, "(", content, ")", "Details:", e);
+                      var message = "Cannot read Pbf from Base64 (string " + content + ", array = " + data + ", size = " + data.length + ", expectedSize = " + contentLength + ") " + 
+                            "for tile {z: " + pendingEntry.z + ", x: "+ pendingEntry.x + ", y"+ pendingEntry.y + "}, Details: \n " + e.stack;
+                      console.error(message);
+                      chrome.devtools.inspectedWindow.eval("console.error('" + message + "')");
                       return; 
                     }
                     

@@ -30,15 +30,6 @@ function getTextWidth(text, fontSize, fontName, fontWeight) {
 }
 
 function createViewContent(entry){
-    /*{
-        x: entry.x,
-        y: entry.y,
-        z: entry.z,,
-        status: entry.status,
-        headers: entry.headers,
-        
-        
-    }*/
     return JSON.stringify(
           entry, 
           (key, value)=>{
@@ -47,7 +38,16 @@ function createViewContent(entry){
                  if(!data.length){
                      return {};
                  }
-                 var tile = new VectorTile.VectorTile(new Pbf(data));
+                 var tile;
+                 try {
+                   tile = new VectorTile.VectorTile(new Pbf(data));    
+                 } catch (e) {
+                   var message = "Cannot read Pbf from Base64 string " + entry.tile + "(array = " + data + ", size = " + data.length + ") " +  
+                         "for tile {z: " + entry.z + ", x: "+ entry.x + ", y"+ entry.y + "}, Details: \n " + e.stack;
+                   console.error(message);
+                   chrome.devtools.inspectedWindow.eval("console.error('" + message + "')");    
+                   return {error: message}; 
+                 }
                  var layerNames = Object.keys(tile.layers);
                  if(!layerNames.length) {
                      return {};
@@ -125,7 +125,7 @@ function onDocumentClick(e){
         }  
         viewTileContainer.innerHTML = "";
         dialog.style.display = "none";
-        if(node && node.entry) {
+        if(node && node.entry && node.entry.status > 0) {
             setTimeout(()=>{
                 var viewConent = createViewContent(node.entry);
                 dialog.style.display = "block";
