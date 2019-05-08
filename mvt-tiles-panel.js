@@ -269,7 +269,6 @@ function processPendingEntry(entry){
     durationNode.textContent = String(entry.time ? Math.round(entry.time) : "");
     nEndedNode.textContent = String(entry.endOrder || "");
 
-    layersCountNode.classList.add("wrap-content");
     featuresCountNode.classList.add("wrap-content");
     rowNode.classList.add("pending-tile");
 }
@@ -288,13 +287,13 @@ function processFinishedEntry(entry){
     var layersCountNode = rowNode.children[6];
     var featuresCountNode = rowNode.children[7]; 
     var startDateNode = rowNode.children[8];
-    var durationNode = rowNode.children[9];
-    var nEndedNode = rowNode.children[10];
+    var nEndedNode = rowNode.children[9];
+    var durationNode = rowNode.children[10];
 
     statusNode.textContent = entry.status;
     bytesNode.textContent = String(entry.tileSize ? entry.tileSize : "");
-    durationNode.textContent = String(entry.time ? Math.round(entry.time) : "");
     nEndedNode.textContent = String(entry.endOrder || "");
+    durationNode.textContent = String(entry.time ? Math.round(entry.time) : "");
 
     
     var isOk = entry.status == 200;

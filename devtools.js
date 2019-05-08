@@ -215,7 +215,8 @@ chrome.storage.local.get(['trackEmptyResponse', 'trackOnlySuccessfulResponse', '
               status: httpEntry.response.status, 
               tile: content,
               tileSize: data && data.length,
-              endOrder: ++endOrder
+              endOrder: ++endOrder,
+              time: httpEntry.time
             })
 		  })    
 	});
