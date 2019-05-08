@@ -245,13 +245,14 @@ window.redrawEntries = function(entries){
 }
 
 function processPendingEntry(entry){
-    var rowNode, statusNode, urlNode, xNode, yNode, zNode, layersCountNode, featuresCountNode, startDateNode, durationNode, nEndedNode;
+    var rowNode, statusNode, urlNode, bytesNode, xNode, yNode, zNode, layersCountNode, featuresCountNode, startDateNode, durationNode, nEndedNode;
     
     tilesTable.appendChild(rowNode = toRow(document.createElement("div"), entry));
     rowNode.appendChild(statusNode = toCell(document.createElement("div")));
     rowNode.appendChild(zNode = toCell(document.createElement("div")));
     rowNode.appendChild(xNode = toCell(document.createElement("div")));
     rowNode.appendChild(yNode = toCell(document.createElement("div")));
+    rowNode.appendChild(bytesNode = toCell(document.createElement("div")));        
     rowNode.appendChild(urlNode = toCell(document.createElement("div")));        
     rowNode.appendChild(layersCountNode = toCell(document.createElement("div")));
     rowNode.appendChild(featuresCountNode = toCell(document.createElement("div")));
@@ -282,14 +283,16 @@ function processFinishedEntry(entry){
     var zNode = rowNode.children[1];     
     var xNode = rowNode.children[2];
     var yNode = rowNode.children[3];
-    var urlNode = rowNode.children[4];
-    var layersCountNode = rowNode.children[5];
-    var featuresCountNode = rowNode.children[6]; 
-    var startDateNode = rowNode.children[7];
-    var durationNode = rowNode.children[8];
-    var nEndedNode = rowNode.children[9];
+    var bytesNode = rowNode.children[4];    
+    var urlNode = rowNode.children[5];
+    var layersCountNode = rowNode.children[6];
+    var featuresCountNode = rowNode.children[7]; 
+    var startDateNode = rowNode.children[8];
+    var durationNode = rowNode.children[9];
+    var nEndedNode = rowNode.children[10];
 
     statusNode.textContent = entry.status;
+    bytesNode.textContent = String(entry.tileSize ? entry.tileSize : "");
     durationNode.textContent = String(entry.time ? Math.round(entry.time) : "");
     nEndedNode.textContent = String(entry.endOrder || "");
 

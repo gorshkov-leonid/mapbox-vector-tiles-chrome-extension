@@ -10,8 +10,8 @@
             
             #tilesTable {
               display: grid;
-              /*status, url, z, x, y, Σ layers, layer: Σ features, #Started, #Ended, Time*/
-              grid-template-columns: 50px 90px 90px 90px auto auto auto auto auto auto; 
+              /*status, z, x, y, bytes, url, Σ layers, layer: Σ features, #started, #ended, time*/
+              grid-template-columns: 50px 90px 90px 90px 70px auto auto auto auto auto auto; 
               border-bottom: solid #CCC 1px;;
               border-left: solid #CCC 1px;;
               box-sizing: border-box;
@@ -63,8 +63,7 @@
             }
             
             #tilesTable [role=row].no-success-tile [role=cell] {
-               background-color: #fff0f0;
-               color: #bebcdd;
+               color: #e0a4a4;
             }
 
             #tilesTable [role=row]:hover [role=cell]{
@@ -77,23 +76,27 @@
             #tilesTable [role=row].empty-tile a:hover,
             #tilesTable [role=row].empty-tile a:active,
             #tilesTable [role=row].empty-tile a:visited,
-            #tilesTable [role=row].no-success-tile a,
-            #tilesTable [role=row].no-success-tile a:any-link,
-            #tilesTable [role=row].no-success-tile a:link,
-            #tilesTable [role=row].no-success-tile a:hover,
-            #tilesTable [role=row].no-success-tile a:active,
-            #tilesTable [role=row].no-success-tile a:visited,
             #tilesTable [role=row].pending-tile a,
             #tilesTable [role=row].pending-tile a:any-link,            
             #tilesTable [role=row].pending-tile a:link,            
             #tilesTable [role=row].pending-tile a:hover,
             #tilesTable [role=row].pending-tile a:active,
             #tilesTable [role=row].pending-tile a:visited
-            
             {
                color: #bebcdd;
             }
 
+            #tilesTable [role=row].no-success-tile a,
+            #tilesTable [role=row].no-success-tile a:any-link,
+            #tilesTable [role=row].no-success-tile a:link,
+            #tilesTable [role=row].no-success-tile a:hover,
+            #tilesTable [role=row].no-success-tile a:active,
+            #tilesTable [role=row].no-success-tile a:visited
+            {
+               color: #e0a4a4;
+            }
+            
+            
 			#settings-panel {
                padding: 3px;
 			}
@@ -201,9 +204,10 @@
         <div role = "header">z</div>			
         <div role = "header">x</div>
         <div role = "header">y</div>
+        <div role = "header">bytes</div>
         <div role = "header">url</div>
-        <div role = "header" class="wrap-content">Σ layers</div>
-        <div role = "header" class="wrap-content">layer: Σ features </div>
+        <div role = "header" class="wrap-content">&#8721; layers</div>
+        <div role = "header" class="wrap-content">layer: &#8721; features </div>
         <div role = "header">#started</div>
         <div role = "header">#ended</div>
         <div role = "header">time</div>
