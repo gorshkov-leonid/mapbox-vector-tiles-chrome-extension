@@ -279,10 +279,10 @@ function processFinishedEntry(entry){
         return;
     }
     var statusNode = rowNode.children[0];
-    var urlNode = rowNode.children[1];
+    var zNode = rowNode.children[1];     
     var xNode = rowNode.children[2];
     var yNode = rowNode.children[3];
-    var zNode = rowNode.children[4]; 
+    var urlNode = rowNode.children[4];
     var layersCountNode = rowNode.children[5];
     var featuresCountNode = rowNode.children[6]; 
     var startDateNode = rowNode.children[7];
