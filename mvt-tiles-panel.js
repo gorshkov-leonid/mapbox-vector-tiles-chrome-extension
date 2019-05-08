@@ -153,6 +153,17 @@ function toCell(div){
     return div;
 }
 
+function findElementForEntry(entry){
+    var rowsNodeList = tilesTable.querySelectorAll('[role=row]');
+    for (i = 0; i < rowsNodeList.length; i++) {
+        var rowElement = rowsNodeList.item(i);
+        if(rowElement.entry === entry) {
+            return rowElement;
+        }
+    }
+    return null;
+}
+
 function toMvtLink(entry){
     var requestUrl = entry.url;;
     var requestHeaders = entry.headers;  
@@ -162,6 +173,9 @@ function toMvtLink(entry){
     var a = document.createElement("a");
     a.setAttribute("href", requestUrl);
     a.addEventListener('click', function(e){
+      if(!entry.tile){
+          return;
+      }
       var newBlob = new Blob([Uint8Array.from(atob(entry.tile), c => c.charCodeAt(0))]);
       const data = window.URL.createObjectURL(newBlob);
       var link = document.createElement('a');
@@ -185,7 +199,7 @@ function formatNumberLength(num, length) {
     return r;
 }
 
-function tormatTime(dateString){
+function formatTime(dateString){
     if(!dateString)
     {
         return "";
@@ -199,80 +213,130 @@ function isNeedToScroll(scrollableElement){
     return Math.abs(scrollableElement.offsetHeight + scrollableElement.scrollTop -  scrollableElement.scrollHeight) < 5;
 }
 
+window.onPendingEntry = function(entry){
+    doAutoscroollableOperation(()=>{
+        processPendingEntry(entry);
+    })    
+}
+
+window.onFinishedEntry = function(entry){
+    doAutoscroollableOperation(()=>{
+        processFinishedEntry(entry);
+    })  
+}
+
+window.onRemovedEntry = function(entry){
+    doAutoscroollableOperation(()=>{
+        processRemovedEntry(entry);
+    })  
+}
 
 window.redrawEntries = function(entries){
-    var needToScroll = isNeedToScroll(tilesTable);
-    
-    var cells = tilesTable.querySelectorAll('[role=cell]');
-    cells.forEach((cell)=>{
-        cell.remove();
-    });
-
-    entries.forEach((entry)=>{
-        var rowNode, statusNode, urlNode, xNode, yNode, zNode, layersCountNode, featuresCountNode, startDateNode, durationNode, nEndedNode;
-
-        tilesTable.appendChild(rowNode = toRow(document.createElement("div"), entry));
-        rowNode.appendChild(statusNode = toCell(document.createElement("div")));
-        rowNode.appendChild(zNode = toCell(document.createElement("div")));
-        rowNode.appendChild(xNode = toCell(document.createElement("div")));
-        rowNode.appendChild(yNode = toCell(document.createElement("div")));
-        rowNode.appendChild(urlNode = toCell(document.createElement("div")));        
-        rowNode.appendChild(layersCountNode = toCell(document.createElement("div")));
-        rowNode.appendChild(featuresCountNode = toCell(document.createElement("div")));
-        rowNode.appendChild(startDateNode = toCell(document.createElement("div")));
-        rowNode.appendChild(nEndedNode = toCell(document.createElement("div")));
-        rowNode.appendChild(durationNode = toCell(document.createElement("div")));
-        
-        layersCountNode.classList.add("wrap-content");
-        featuresCountNode.classList.add("wrap-content");
-
-        statusNode.textContent = entry.status;
-        
-        urlNode.appendChild(toMvtLink(entry));
-        zNode.textContent = String(entry.z);
-        xNode.textContent = String(entry.x);
-        yNode.textContent = String(entry.y);
-        
-        startDateNode.textContent = String(entry.startOrder) + " | " + tormatTime(entry.startedDateTime);
-        durationNode.textContent = String(entry.time ? Math.round(entry.time) : "");
-        nEndedNode.textContent = String(entry.endOrder || "");
-
-        
-        var isPending = entry.status == -1;
-        var isOk = entry.status == 200;
-        var isNoContent = entry.status == 204;
-        var isSuccess = isOk || isNoContent;
-        
-        if(isPending)
-        {
-            rowNode.classList.add("pending-tile");
-        } 
-        else if(!isSuccess)
-        {
-             rowNode.classList.add("no-success-tile");
-        }
-        else {
-            var statistics = entry.statistics;
-            if(statistics)
-            {
-                if(isNoContent || !statistics.featuresCount)
-                {
-                    rowNode.classList.add("empty-tile");
-                }
-                layersCountNode.textContent = statistics.featuresCount ? String(statistics.featuresCount) : ""
-                var layersStatistics = statistics.byLayers;
-                featuresCountNode.textContent = Object.keys(layersStatistics).map(
-                   (layerName) => layerName + ": " + layersStatistics[layerName].featuresCount
-                ).join("\n")                      
+    doAutoscroollableOperation(()=>{
+        tilesTable.querySelectorAll('[role=row]')
+                  .forEach((row) => row.remove());
+        entries.forEach((entry) => {
+            processPendingEntry(entry);
+            if(entry.status !== -1/*pending*/){
+                 processFinishedEntry(entry);
             }
-        }
+        })
     })
+}
+
+function processPendingEntry(entry){
+    var rowNode, statusNode, urlNode, xNode, yNode, zNode, layersCountNode, featuresCountNode, startDateNode, durationNode, nEndedNode;
     
+    tilesTable.appendChild(rowNode = toRow(document.createElement("div"), entry));
+    rowNode.appendChild(statusNode = toCell(document.createElement("div")));
+    rowNode.appendChild(zNode = toCell(document.createElement("div")));
+    rowNode.appendChild(xNode = toCell(document.createElement("div")));
+    rowNode.appendChild(yNode = toCell(document.createElement("div")));
+    rowNode.appendChild(urlNode = toCell(document.createElement("div")));        
+    rowNode.appendChild(layersCountNode = toCell(document.createElement("div")));
+    rowNode.appendChild(featuresCountNode = toCell(document.createElement("div")));
+    rowNode.appendChild(startDateNode = toCell(document.createElement("div")));
+    rowNode.appendChild(nEndedNode = toCell(document.createElement("div")));
+    rowNode.appendChild(durationNode = toCell(document.createElement("div")));
+    
+    statusNode.textContent = entry.status;
+    urlNode.appendChild(toMvtLink(entry));
+    zNode.textContent = String(entry.z);
+    xNode.textContent = String(entry.x);
+    yNode.textContent = String(entry.y);
+    startDateNode.textContent = String(entry.startOrder) + " | " + formatTime(entry.startedDateTime);
+    durationNode.textContent = String(entry.time ? Math.round(entry.time) : "");
+    nEndedNode.textContent = String(entry.endOrder || "");
+
+    layersCountNode.classList.add("wrap-content");
+    featuresCountNode.classList.add("wrap-content");
+    rowNode.classList.add("pending-tile");
+}
+
+function processFinishedEntry(entry){
+    var rowNode = findElementForEntry(entry);
+    if(!rowNode){
+        return;
+    }
+    var statusNode = rowNode.children[0];
+    var urlNode = rowNode.children[1];
+    var xNode = rowNode.children[2];
+    var yNode = rowNode.children[3];
+    var zNode = rowNode.children[4]; 
+    var layersCountNode = rowNode.children[5];
+    var featuresCountNode = rowNode.children[6]; 
+    var startDateNode = rowNode.children[7];
+    var durationNode = rowNode.children[8];
+    var nEndedNode = rowNode.children[9];
+
+    statusNode.textContent = entry.status;
+    durationNode.textContent = String(entry.time ? Math.round(entry.time) : "");
+    nEndedNode.textContent = String(entry.endOrder || "");
+
+    
+    var isOk = entry.status == 200;
+    var isNoContent = entry.status == 204;
+    var isSuccess = isOk || isNoContent;
+    
+    rowNode.classList.remove("pending-tile");
+    
+    if(isSuccess) {
+        var statistics = entry.statistics;
+        if(statistics) {
+            if(isNoContent || !statistics.featuresCount){
+                rowNode.classList.add("empty-tile");
+            }
+            
+            layersCountNode.textContent = statistics.layersCount ? String(statistics.layersCount) : ""
+            
+            var layersStatistics = statistics.byLayers;
+            featuresCountNode.textContent = Object.keys(layersStatistics).map(
+               (layerName) => layerName + ": " + layersStatistics[layerName].featuresCount
+            ).join("\n")                      
+        }        
+        
+    }
+    else {
+        rowNode.classList.add("no-success-tile");
+    }
+}
+
+function processRemovedEntry(entry){
+    var rowNode = findElementForEntry(entry);
+    if(!rowNode){
+        return;
+    }
+    rowNode.remove();
+}
+
+function doAutoscroollableOperation(operation){
+    var needToScroll = isNeedToScroll(tilesTable);
+    operation();
     if(needToScroll && tilesTable.lastChild)
     {
         var lastRow = tilesTable.lastChild;
         if(lastRow && lastRow.firstChild && lastRow.firstChild.scrollIntoView){
             lastRow.firstChild.scrollIntoView();
         }
-    }
+    }   
 }

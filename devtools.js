@@ -4,20 +4,23 @@ var endOrder = 0;
 var startOrder = 0;
 
 function redrawEntries(){
-	if(panel)
-	{
+	if(panel) {
 		panel.redrawEntries(entries);
 	}
 }
 
-function updateEntry(oldEntry, diff){
-    Object.assign(oldEntry, diff)
-	redrawEntries();
+function onPendingRequest(entry){
+    entries.push(entry);
+    if(panel) {
+		panel.onPendingEntry(entry);
+	}
 }
 
-function addEntry(entry){
-    entries.push(entry);
-	redrawEntries();
+function onFinishedRequest(oldEntry, diff){
+    Object.assign(oldEntry, diff)
+    if(panel) {
+		panel.onFinishedEntry(oldEntry);
+	}
 }
 
 function removeEnrty(entry){
@@ -25,7 +28,9 @@ function removeEnrty(entry){
     if(entryIndex != -1){
         entries.splice(entryIndex, 1);
     }
-	redrawEntries();
+    if(panel) {
+       panel.onRemovedEntry(entry);
+    }
 }
 
 function isTileEmpty(tile){
@@ -133,7 +138,7 @@ chrome.storage.local.get(['trackEmptyResponse', 'trackOnlySuccessfulResponse', '
             time: undefined,
             endOrder: undefined,
           };
-		  addEntry(pendingEntry); 
+		  onPendingRequest(pendingEntry); 
 		  
 		  httpEntry.getContent(function(content, encoding){
             var responseHeaders = combineHeaders(httpEntry.response.headers);  
@@ -205,7 +210,7 @@ chrome.storage.local.get(['trackEmptyResponse', 'trackOnlySuccessfulResponse', '
                 }
             }
 
-            updateEntry(pendingEntry, {...pendingEntry,
+            onFinishedRequest(pendingEntry, {...pendingEntry,
               statistics: statistics,
               status: httpEntry.response.status, 
               tile: content,
