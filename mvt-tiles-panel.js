@@ -42,7 +42,7 @@ function createViewContent(entry){
                  try {
                    tile = new VectorTile.VectorTile(new Pbf(data));    
                  } catch (e) {
-                   var message = "Cannot read Pbf from Base64 string " + entry.tile + "(array = " + data + ", size = " + data.length + ") " +  
+                   var message = "Cannot read Pbf from Base64 string " + entry.tile + "(array = " + data + ", size = " + data.length + "). Bug in Google Chrome Extension API? " +  
                          "for tile {z: " + entry.z + ", x: "+ entry.x + ", y"+ entry.y + "}, Details: \n " + e.stack;
                    console.error(message);
                    chrome.devtools.inspectedWindow.eval("console.error('" + message + "')");    
