@@ -29,40 +29,77 @@ function getTextWidth(text, fontSize, fontName, fontWeight) {
   return context.measureText(text).width;
 }
 
-function createViewContent(entry){
+function tileToGeoJson(tile,z,x,y){
+  var layerNames = Object.keys(tile.layers);
+  if(!layerNames.length) {
+      return {};
+  }  
+  var geoJsonLayers = {};
+  layerNames.forEach((layerName)=>{
+    var geoJsonLayer = geoJsonLayers[layerName] = {};
+    var geoJsonFeatures = geoJsonLayer.features = [];
+    var layer = tile.layers[layerName];
+    for(var i = 0; i < layer.length; i++)
+    {
+       geoJsonFeatures.push(layer.feature(i).toGeoJSON(x, y, z));
+    }
+  })
+  return geoJsonLayers;    
+}
+
+function uint8ArrayToBase64(bytes) {
+    let binary = '';
+    let len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return window.btoa(binary);
+}
+
+function prepareGeoJsonTile(entry, callback){
+  var data = Uint8Array.from(atob(entry.tile || null/*undefined-base64-string cannot be transformed to Array*/), c => c.charCodeAt(0));
+  var tile;
+  try {
+    tile = new VectorTile.VectorTile(new Pbf(data));    
+  } catch (e) {
+    var tileCoord = "{z: " + entry.z + ", x: "+ entry.x + ", y: "+ entry.y + "}";  
+    var message = "Cannot read Pbf from Base64 string ("+
+                     "content = " + entry.tile + "," + 
+                     "array = " + data + "," + 
+                     "size = " + data.length + 
+                  ") for tile " + tileCoord + ". " + 
+                  "MVT will fetched again... ";                     
+    console.warn(message);
+    chrome.devtools.inspectedWindow.eval("console.warn('" + message + "')");    
+                  
+    window.fetch(entry.url, {method: "GET", headers: entry.headers}).then(res => res.arrayBuffer()).then((buffer)=>{
+        var data = new Uint8Array(buffer);
+        //http://qaru.site/questions/85259/how-to-go-from-blob-to-arraybuffer 
+        //https://gist.github.com/n1ru4l/dc99062577b746e0783410b1298ab897 
+        //https://gist.github.com/Deliaz/e89e9a014fea1ec47657d1aac3baa83c        
+        entry.tile = uint8ArrayToBase64(data);
+        var tile = new VectorTile.VectorTile(new Pbf(data));   
+        callback(tileToGeoJson(tile, entry.z,entry.x,entry.y));
+        
+    }).catch((e)=>{
+        var message = "... Loading failed for tile " + tileCoord; 
+        console.error(message);
+        chrome.devtools.inspectedWindow.eval("console.error('" + message + "')");     
+        callback({error: message}); 
+    })
+  }
+
+  if(tile) {
+      callback(tileToGeoJson(tile, entry.z,entry.x,entry.y));
+  } 
+}
+
+function createViewContent(entry, geoJsonOrJsonError){
     return JSON.stringify(
           entry, 
           (key, value)=>{
               if (key == 'tile') {
-                 var data = Uint8Array.from(atob(entry.tile), c => c.charCodeAt(0));
-                 if(!data.length){
-                     return {};
-                 }
-                 var tile;
-                 try {
-                   tile = new VectorTile.VectorTile(new Pbf(data));    
-                 } catch (e) {
-                   var message = "Cannot read Pbf from Base64 string " + entry.tile + "(array = " + data + ", size = " + data.length + "). Bug in Google Chrome Extension API? " +  
-                         "for tile {z: " + entry.z + ", x: "+ entry.x + ", y"+ entry.y + "}, Details: \n " + e.stack;
-                   console.error(message);
-                   chrome.devtools.inspectedWindow.eval("console.error('" + message + "')");    
-                   return {error: message}; 
-                 }
-                 var layerNames = Object.keys(tile.layers);
-                 if(!layerNames.length) {
-                     return {};
-                 }          
-                 var geoJsonLayers = {};
-                 layerNames.forEach((layerName)=>{
-                   var geoJsonLayer = geoJsonLayers[layerName] = {};
-                   var geoJsonFeatures = geoJsonLayer.features = [];
-                   var layer = tile.layers[layerName];
-                   for(var i = 0; i < layer.length; i++)
-                   {
-                      geoJsonFeatures.push(layer.feature(i).toGeoJSON(entry.x, entry.y, entry.z));
-                   }
-                 })
-                 return geoJsonLayers;
+                 return geoJsonOrJsonError;
               }
               return value;
         }, 
@@ -125,11 +162,13 @@ function onDocumentClick(e){
         }  
         viewTileContainer.innerHTML = "";
         dialog.style.display = "none";
-        if(node && node.entry && node.entry.status > 0) {
+        if(node && node.entry) {
             setTimeout(()=>{
-                var viewConent = createViewContent(node.entry);
-                dialog.style.display = "block";
-                viewTileContainer.innerHTML = viewConent;    
+                prepareGeoJsonTile(node.entry, (geoJsonOrJsonError)=>{
+                    var viewConent = createViewContent(node.entry, geoJsonOrJsonError);
+                    dialog.style.display = "block";
+                    viewTileContainer.innerHTML = viewConent;    
+                });
             }, 0)/*to see that previous content is cleared*/;
         } 
     }

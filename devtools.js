@@ -171,10 +171,15 @@ chrome.storage.local.get(['trackEmptyResponse', 'trackOnlySuccessfulResponse', '
                 data = Uint8Array.from(atob(content), c => c.charCodeAt(0)) ;
                 
                 if(isSuccess && contentLength >= 0 && (!content || data.length != contentLength)){
-                    var message = "Cannot read Pbf from Base64 (string " + content + ", array = " + data + ", size = " + data.length + ", expectedSize = " + contentLength + "). Bug in Google Chrome Extension API? " +  
-                          "for tile {z: " + pendingEntry.z + ", x: "+ pendingEntry.x + ", y"+ pendingEntry.y + "}";
-                    console.error(message);
-                    chrome.devtools.inspectedWindow.eval("console.error('" + message + "')");
+                    var message = "Cannot read Pbf from Base64 string ("+
+                                     "content = " + content + "," + 
+                                     "array = " + data + "," + 
+                                     "size = " + data.length + 
+                                     (contentLength ? ", expectedSize = " + contentLength : "")+ 
+                                   ") for tile {z: " + pendingEntry.z + ", x: "+ pendingEntry.x + ", y: "+ pendingEntry.y + "}. " + 
+                                   "Probably the request was aborted while reading of response body.";
+                    console.warn(message);
+                    chrome.devtools.inspectedWindow.eval("console.warn('" + message + "')");
                     return;                    
                 }
                 
@@ -183,8 +188,13 @@ chrome.storage.local.get(['trackEmptyResponse', 'trackOnlySuccessfulResponse', '
                     try{
                       tile = new VectorTile.VectorTile(new Pbf(data));    
                     } catch (e) {
-                      var message = "Cannot read Pbf from Base64 (string " + content + ", array = " + data + ", size = " + data.length + ", expectedSize = " + contentLength + "). Bug in Google Chrome Extension API? " + 
-                            "for tile {z: " + pendingEntry.z + ", x: "+ pendingEntry.x + ", y"+ pendingEntry.y + "}, Details: \n " + e.stack;
+                      var message = "Cannot read Pbf from Base64 string ("+
+                                       "content = " + content + "," + 
+                                       "array = " + data + "," + 
+                                       "size = " + data.length + 
+                                       (contentLength ? ", expectedSize = " + contentLength : "")+ 
+                                    ") for tile {z: " + pendingEntry.z + ", x: "+ pendingEntry.x + ", y: "+ pendingEntry.y + "}. " + 
+                                    "Details: " + e.stack;
                       console.error(message);
                       chrome.devtools.inspectedWindow.eval("console.error('" + message + "')");
                       return; 
