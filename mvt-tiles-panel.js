@@ -56,57 +56,6 @@ function uint8ArrayToBase64(bytes) {
     return window.btoa(binary);
 }
 
-function prepareGeoJsonTile(entry, callback){
-  var data = Uint8Array.from(atob(entry.tile || null/*undefined-base64-string cannot be transformed to Array*/), c => c.charCodeAt(0));
-  var tile;
-  try {
-    tile = new VectorTile.VectorTile(new Pbf(data));    
-  } catch (e) {
-    var tileCoord = "{z: " + entry.z + ", x: "+ entry.x + ", y: "+ entry.y + "}";  
-    var message = "Cannot read Pbf from Base64 string ("+
-                     "content = " + entry.tile + "," + 
-                     "array = " + data + "," + 
-                     "size = " + data.length + 
-                  ") for tile " + tileCoord + ". " + 
-                  "MVT will fetched again... ";                     
-    console.warn(message);
-    chrome.devtools.inspectedWindow.eval("console.warn('" + message + "')");    
-                  
-    window.fetch(entry.url, {method: "GET", headers: entry.headers}).then(res => res.arrayBuffer()).then((buffer)=>{
-        var data = new Uint8Array(buffer);
-        //http://qaru.site/questions/85259/how-to-go-from-blob-to-arraybuffer 
-        //https://gist.github.com/n1ru4l/dc99062577b746e0783410b1298ab897 
-        //https://gist.github.com/Deliaz/e89e9a014fea1ec47657d1aac3baa83c        
-        entry.tile = uint8ArrayToBase64(data);
-        var tile = new VectorTile.VectorTile(new Pbf(data));   
-        callback(tileToGeoJson(tile, entry.z,entry.x,entry.y));
-        
-    }).catch((e)=>{
-        var message = "... Loading failed for tile " + tileCoord; 
-        console.error(message);
-        chrome.devtools.inspectedWindow.eval("console.error('" + message + "')");     
-        callback({error: message}); 
-    })
-  }
-
-  if(tile) {
-      callback(tileToGeoJson(tile, entry.z,entry.x,entry.y));
-  } 
-}
-
-function createViewContent(entry, geoJsonOrJsonError){
-    return JSON.stringify(
-          entry, 
-          (key, value)=>{
-              if (key == 'tile') {
-                 return geoJsonOrJsonError;
-              }
-              return value;
-        }, 
-        2
-    );
-}
-
 const adjustInputTextWidth = (input)=>{
      var style = window.getComputedStyle(input) 
      var textWidth = getTextWidth(input.value, style.fontSize, style.fontFamily, style.fontWeight);
@@ -178,7 +127,133 @@ function onDocumentClick(e){
            dialog.style.display = "none"; 
         }
     }
-    e.stopPropagation();
+}
+
+function prepareGeoJsonTile(entry, callback){
+  const base64TileToUint8Array = (callback/*: (vectorTile, error)=>void*/) => {
+      var tile;
+      var error;      
+      var data = entry.tile && Uint8Array.from(atob(entry.tile), c => c.charCodeAt(0)) || null;
+      if(data) {
+        try {
+           tile = new VectorTile.VectorTile(new Pbf(data));    
+        } catch (e) {   
+           error = e;
+        }
+      }
+      callback(tile, error, data);
+  }
+  
+  base64TileToUint8Array((vectorTile, error, data) => {
+      if(vectorTile){
+         callback(tileToGeoJson(vectorTile, entry.z,entry.x,entry.y)); 
+      } else {
+        var tileCoord = "{z: " + entry.z + ", x: "+ entry.x + ", y: "+ entry.y + "}";  
+        var message = "Cannot read Pbf from Base64 string ("+
+                         "content = " + entry.tile + "," + 
+                         "array"+ (data ? "(" + data.length + ")" : "") + " = " + data + "," + 
+                      ") for tile " + tileCoord + ". " + 
+                      "MVT will be fetched again... ";                     
+        console.warn(message, error);
+        chrome.devtools.inspectedWindow.eval("console.warn('" + message + "')");    
+        
+        //retry...
+        const onLoadFailed = (error)=>{
+            var message = "... Loading failed for tile " + tileCoord; 
+            console.error(message, error);
+            chrome.devtools.inspectedWindow.eval("console.error('" + message + "')");     
+            callback({error: message}); 
+        }
+        fetchTile(entry).then(()=>{
+            base64TileToUint8Array((vectorTile, error) => {
+                if(vectorTile){
+                    callback(tileToGeoJson(vectorTile, entry.z,entry.x,entry.y));  
+                } else {
+                    onLoadFailed(error);
+                }                    
+            });
+        }).catch((error)=>{
+            onLoadFailed(error);      
+        });             
+      }
+  });
+}
+
+function createViewContent(entry, geoJsonOrJsonError){
+    console.time("Stringify content to show");
+    var result = JSON.stringify(
+          entry, 
+          (key, value)=>{
+              if (key == 'extra') {
+                 return undefined;
+              }
+              else if (key == 'tile') {
+                 return geoJsonOrJsonError;
+              }
+              return value;
+        }, 
+        2
+    );
+    console.timeEnd("Stringify content to show");
+    return result;
+}
+
+function toMvtLink(entry){
+    var requestUrl = entry.url;;
+    var requestHeaders = entry.headers;  
+    
+    var url = new URL(requestUrl);
+    var aText = url.pathname+url.search+url.hash;
+    var a = document.createElement("a");
+    a.setAttribute("href", requestUrl);
+    a.addEventListener('click', function(e){
+      e.preventDefault(); 
+      e.stopPropagation();
+       
+      var fileName = entry.z + "_" + entry.x + "_" + entry.y + ".mvt";
+      if(entry.tile){
+          saveFromBinaryData(entry.tile, fileName);
+      } else {
+         fetchTile(entry).then((buffer)=>{
+           saveFromBinaryData(new Uint8Array(buffer), fileName);         
+         }).catch(error => {
+            var message = "Loading failed for tile " + "{z: " + entry.z + ", x: "+ entry.x + ", y: "+ entry.y + "}"; 
+            console.error(message, error);
+            chrome.devtools.inspectedWindow.eval("console.error('" + message + "')");     
+            callback({error: message});              
+         });
+      }
+      return false;
+    }); 
+    a.textContent = aText;
+    return a;
+}
+
+function fetchTile(entry){
+  var headers = {...entry.headers}
+  if(headers.accept){
+        headers.accept = "*/*";
+  } else {
+        headers.Accept = "*/*";
+  }
+  return window.fetch(entry.url, {method: "GET", headers: headers}).then(res => res.arrayBuffer()).then((buffer) => {
+     var data = new Uint8Array(buffer);
+     entry.tile = uint8ArrayToBase64(data);  
+     return buffer;
+  }); 
+}
+
+function saveFromBinaryData(arrayOrBase64Data, fileName){
+  if(!(arrayOrBase64Data instanceof Uint8Array || typeof arrayOrBase64Data == "string")){
+      return;
+  }
+  var newBlob = arrayOrBase64Data instanceof Uint8Array ? new Blob([arrayOrBase64Data]) : new Blob([Uint8Array.from(atob(arrayOrBase64Data), c => c.charCodeAt(0))]);
+  const data = window.URL.createObjectURL(newBlob);
+  var link = document.createElement('a');
+  link.href = data;
+  link.download = fileName;
+  link.click();
+  window.URL.revokeObjectURL(data);
 }
 
 function toRow(div, entry){
@@ -201,33 +276,6 @@ function findElementForEntry(entry){
         }
     }
     return null;
-}
-
-function toMvtLink(entry){
-    var requestUrl = entry.url;;
-    var requestHeaders = entry.headers;  
-    
-    var url = new URL(requestUrl);
-    var aText = url.pathname+url.search+url.hash;
-    var a = document.createElement("a");
-    a.setAttribute("href", requestUrl);
-    a.addEventListener('click', function(e){
-      if(!entry.tile){
-          return;
-      }
-      var newBlob = new Blob([Uint8Array.from(atob(entry.tile), c => c.charCodeAt(0))]);
-      const data = window.URL.createObjectURL(newBlob);
-      var link = document.createElement('a');
-      link.href = data;
-      link.download = entry.z + "_" + entry.x + "_" + entry.y + ".mvt";
-      link.click();
-      window.URL.revokeObjectURL(data);
-       e.preventDefault(); 
-       e.stopPropagation();
-       return false;
-    }); 
-    a.textContent = aText;
-    return a;
 }
 
 function formatNumberLength(num, length) {
@@ -335,16 +383,12 @@ function processFinishedEntry(entry){
     durationNode.textContent = String(entry.time ? Math.round(entry.time) : "");
 
     
-    var isOk = entry.status == 200;
-    var isNoContent = entry.status == 204;
-    var isSuccess = isOk || isNoContent;
-    
     rowNode.classList.remove("pending-tile");
     
-    if(isSuccess) {
+    if(entry.extra.isValid) {
         var statistics = entry.statistics;
         if(statistics) {
-            if(isNoContent || !statistics.featuresCount){
+            if(entry.extra.isEmpty || !statistics.featuresCount){
                 rowNode.classList.add("empty-tile");
             }
             

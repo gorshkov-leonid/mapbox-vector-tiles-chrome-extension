@@ -23,7 +23,7 @@ function onFinishedRequest(oldEntry, diff){
 	}
 }
 
-function removeEnrty(entry){
+function removeEntry(entry){
     var entryIndex = entries.indexOf(entry);
     if(entryIndex != -1){
         entries.splice(entryIndex, 1);
@@ -31,6 +31,17 @@ function removeEnrty(entry){
     if(panel) {
        panel.onRemovedEntry(entry);
     }
+}
+
+function onWrongContent (entry, content, data, contentLengthHeader, err) {
+    var message = "Cannot read Pbf from Base64 string ("+
+                     "content = " + content + ", "
+                     "array = " + data + ", size = " + data.length + 
+                     (contentLengthHeader != -1 ? ", expectedSize = " + contentLengthHeader : "")+ 
+                   ") for tile {z: " + entry.z + ", x: "+ entry.x + ", y: "+ entry.y + "}. " + 
+                   "Probably the request was aborted while reading of response body.";
+    console.warn(message+ (err ? " Details: " + err.stack : ""));
+    chrome.devtools.inspectedWindow.eval("console.warn('" + message + "')");
 }
 
 function isTileEmpty(tile){
@@ -137,6 +148,7 @@ chrome.storage.local.get(['trackEmptyResponse', 'trackOnlySuccessfulResponse', '
             tile: undefined,
             time: undefined,
             endOrder: undefined,
+            extra: {isPending: true, isValid: false, isEmpty: false}
           };
 		  onPendingRequest(pendingEntry); 
 		  
@@ -147,87 +159,92 @@ chrome.storage.local.get(['trackEmptyResponse', 'trackOnlySuccessfulResponse', '
                 return;
 		    }
             
-            var isOk = httpEntry.response.status ==200;
-            var isNoContent = httpEntry.response.status ==204;
-            var isSuccess = isOk || isNoContent;
-
-			if(isNoContent && !trackEmptyResponse)
-		    {	
-               removeEnrty(pendingEntry);
-		  	   return;
-		    }	
-			
-            if(trackOnlySuccessfulResponse && !isSuccess)
-            {
-                removeEnrty(pendingEntry);
-                return;
-            }
+            var isOk = httpEntry.response.status == 200;
+            var isNoContent = httpEntry.response.status == 204;
+            var isValid = isOk || isNoContent;
 
             var layersStatistics = {};
             var statistics = {layersCount: 0, featuresCount: 0, byLayers: layersStatistics /* featuresCount */ };
-            var data ;
-            if(isOk){
-                var contentLength = Number(responseHeaders["content-length"] || responseHeaders["Content-Length"] || -1);
-                data = Uint8Array.from(atob(content), c => c.charCodeAt(0)) ;
-                
-                if(isSuccess && contentLength >= 0 && (!content || data.length != contentLength)){
-                    var message = "Cannot read Pbf from Base64 string ("+
-                                     "content = " + content + "," + 
-                                     "array = " + data + "," + 
-                                     "size = " + data.length + 
-                                     (contentLength ? ", expectedSize = " + contentLength : "")+ 
-                                   ") for tile {z: " + pendingEntry.z + ", x: "+ pendingEntry.x + ", y: "+ pendingEntry.y + "}. " + 
-                                   "Probably the request was aborted while reading of response body.";
-                    console.warn(message);
-                    chrome.devtools.inspectedWindow.eval("console.warn('" + message + "')");
-                    return;                    
-                }
-                
-                if(content && data.length){
-			        var tile;
-                    try{
-                      tile = new VectorTile.VectorTile(new Pbf(data));    
-                    } catch (e) {
-                      var message = "Cannot read Pbf from Base64 string ("+
-                                       "content = " + content + "," + 
-                                       "array = " + data + "," + 
-                                       "size = " + data.length + 
-                                       (contentLength ? ", expectedSize = " + contentLength : "")+ 
-                                    ") for tile {z: " + pendingEntry.z + ", x: "+ pendingEntry.x + ", y: "+ pendingEntry.y + "}. " + 
-                                    "Details: " + e.stack;
-                      console.error(message);
-                      chrome.devtools.inspectedWindow.eval("console.error('" + message + "')");
-                      return; 
-                    }
-                    
-                    if(!trackEmptyResponse && isTileEmpty(tile)){
-                        removeEnrty(pendingEntry);
-		  	            return;
-                    } else {
-                        var layersNames = Object.keys(tile.layers);
-                        layersNames.forEach((layerName)=>{
-                          var layer = tile.layers[layerName];
-                          var layerStatistics = statistics.byLayers[layerName] = {};
-                          layerStatistics.featuresCount = layer.length;
-                          statistics.featuresCount += layer.length;
-                        });
-                        statistics.layersCount = layersNames.length;
-                    }
-                }
-                else if(!trackEmptyResponse){
-                   removeEnrty(pendingEntry);
-		  	       return;
-                }
+            var extra = {isPending: false, isValid: isValid, isEmpty: isNoContent};
+            var tile;            
+            
+            function requestFinished() {
+                onFinishedRequest(pendingEntry, {...pendingEntry,
+                    statistics: statistics,
+                    status: httpEntry.response.status, 
+                    tile: content,
+                    tileSize: extra.isValid && data && data.length,
+                    endOrder: ++endOrder,
+                    time: httpEntry.time,
+                    extra: extra
+                })
+            }
+            
+            function emptyRequestFinished() {
+                extra.isEmpty = true 
+                if(!trackEmptyResponse){
+                   removeEntry(pendingEntry);
+                } 
+                requestFinished(); 
             }
 
-            onFinishedRequest(pendingEntry, {...pendingEntry,
-              statistics: statistics,
-              status: httpEntry.response.status, 
-              tile: content,
-              tileSize: data && data.length,
-              endOrder: ++endOrder,
-              time: httpEntry.time
-            })
+            function notSuccessfulRequestFinished() {
+                extra.isValid = false;  
+                if(trackOnlySuccessfulResponse){
+                  removeEntry(pendingEntry);
+                  return;  
+                }
+                requestFinished(); 
+                return;               
+            }
+                        
+            if(!extra.isValid) {
+                notSuccessfulRequestFinished();
+                return;
+            }
+                        
+			if(extra.isEmpty) {	
+               emptyRequestFinished();
+		  	   return;
+		    }	
+
+            var contentLengthHeader = Number(responseHeaders["content-length"] || responseHeaders["Content-Length"] || -1);
+            var data = Uint8Array.from(atob(content), c => c.charCodeAt(0)) ;
+            
+            /*Content-Length is not equal to actual bytes count*/
+            if(content == undefined || (contentLengthHeader != -1 && data.length != contentLengthHeader)){
+                onWrongContent(pendingEntry, content, data, contentLengthHeader);
+                notSuccessfulRequestFinished();
+                return;
+            }
+            
+            if(!data.length){
+                emptyRequestFinished();
+		  	    return;
+            }  
+
+            try{
+              tile = new VectorTile.VectorTile(new Pbf(data));    
+            } catch (err) {
+              onWrongContent(pendingEntry, content, data, contentLengthHeader, err);  
+              notSuccessfulRequestFinished();
+              return;
+            }            
+  
+            if(isTileEmpty(tile)){
+              emptyRequestFinished();
+		  	  return;                  
+            }
+            
+            var layersNames = Object.keys(tile.layers);
+            layersNames.forEach((layerName)=>{
+              var layer = tile.layers[layerName];
+              var layerStatistics = statistics.byLayers[layerName] = {};
+              layerStatistics.featuresCount = layer.length;
+              statistics.featuresCount += layer.length;
+            });
+            statistics.layersCount = layersNames.length;
+            requestFinished();
 		  })    
 	});
 });
