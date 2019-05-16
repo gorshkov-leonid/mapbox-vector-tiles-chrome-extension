@@ -348,7 +348,7 @@ function processPendingEntry(entry) {
 	xNode.textContent = String(entry.x);
 	yNode.textContent = String(entry.y);
 	startDateNode.textContent = String(entry.startOrder) + " | " + formatTime(entry.startedDateTime);
-	durationNode.textContent = String(entry.time ? Math.round(entry.time) : "");
+	durationNode.textContent = String(entry.time ? window.prettyMilliseconds(Math.round(entry.time)) : "");
 	nEndedNode.textContent = String(entry.endOrder || "");
 
 	featuresCountNode.classList.add("wrap-content");
@@ -368,10 +368,8 @@ function processFinishedEntry(entry) {
 	const durationNode = rowNode.children[10];
 
 	statusNode.textContent = entry.status;
-	bytesNode.textContent = String(entry.tileSize ? entry.tileSize : "");
+	bytesNode.textContent = String(entry.tileSize ? window.formatBytes(entry.tileSize) : "");
 	nEndedNode.textContent = String(entry.endOrder || "");
-	durationNode.textContent = String(entry.time ? Math.round(entry.time) : "");
-
 
 	rowNode.classList.remove("pending-tile");
 
