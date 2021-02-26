@@ -2,7 +2,7 @@
 	"name" : "Mapbox Vector Tiles",
 	"version" : "1.0.10",
 	"description" : "Parser for loaded Mapbox Vector Tiles",
-	"permissions" : ["declarativeContent", "storage", "activeTab", "downloads", "tabs"],
+	"permissions" : ["declarativeContent", "storage", "activeTab", "tabs"],
 	"background" : {
 		"scripts" : ["background.js"],
 		"persistent" : false
