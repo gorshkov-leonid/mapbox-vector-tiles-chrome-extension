@@ -3,6 +3,14 @@
 	padding-left: 20px;
 }
 
+.json-viewer .link-bar {
+	margin-left: -10px;
+}
+
+.json-viewer .link-bar a {
+	padding: 0 4px;
+}
+
 .json-viewer ul {
 	list-style-type: none;
 	margin: 0;
