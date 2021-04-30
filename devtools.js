@@ -111,6 +111,12 @@ chrome.storage.local.get(['trackEmptyResponse', 'trackOnlySuccessfulResponse', '
 
     chrome.devtools.network.onRequestFinished.addListener(
         function (httpEntry) {
+            const responseHeaders = combineHeaders(httpEntry.response.headers);
+
+            if (responseHeaders["content-type"] !== "application/vnd.mapbox-vector-tile") {
+                return;
+            }
+
             const urlParseResult = httpEntry.request.url.match(mvtRequestPatternRegExp);
 
             if (!urlParseResult) {
@@ -140,7 +146,8 @@ chrome.storage.local.get(['trackEmptyResponse', 'trackOnlySuccessfulResponse', '
                 z: z,
                 status: -1,
                 url: url,
-                headers: requestHeaders,
+                requestHeaders: requestHeaders,
+                responseHeaders: responseHeaders,
                 startOrder: nStarted,
                 startedDateTime: startedDateTime,
                 time: time,
@@ -152,7 +159,6 @@ chrome.storage.local.get(['trackEmptyResponse', 'trackOnlySuccessfulResponse', '
             onPendingRequest(pendingEntry);
 
             httpEntry.getContent(function (content, encoding) {
-                const responseHeaders = combineHeaders(httpEntry.response.headers);
                 const pendingEntryIndex = entries.indexOf(pendingEntry);
                 if (pendingEntryIndex === -1) {
                     return;
@@ -210,7 +216,7 @@ chrome.storage.local.get(['trackEmptyResponse', 'trackOnlySuccessfulResponse', '
 
                 /*Content-Length is not equal to actual bytes count*/
                 // noinspection EqualityComparisonWithCoercionJS
-                if (content == undefined || (contentLengthHeader !== -1 && data.length !== contentLengthHeader)) {
+                if (content === undefined || (contentLengthHeader !== -1 && data.length !== contentLengthHeader)) {
                     onWrongContent(pendingEntry, content, data, contentLengthHeader);
                     notSuccessfulRequestFinished();
                     return;

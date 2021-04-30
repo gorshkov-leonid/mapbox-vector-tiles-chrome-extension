@@ -1,14 +1,15 @@
-const tilesTable = document.getElementById('tilesTable');
-const viewTileContainer = document.getElementById('viewTileContainer');
+const body = document.body;
 
-const dialog = document.getElementById('viewTileDialog');
+const _ge = document.getElementById.bind(document);
+
+const tilesTable = _ge('tilesTable');
+const tileContent = _ge('tileContent');
+const tileMetadata = _ge('tileMetadata');
+const dialog = _ge('viewTileDialog');
 const closeButton = document.getElementsByClassName("viewTileDialog_closeButton")[0];
-closeButton.onclick = function () {
-	dialog.style.display = "none";
-};
 
 document.addEventListener("click", onDocumentClick);
-document.getElementById('clear').addEventListener("click", (e) => {
+_ge('clear').addEventListener("click", (e) => {
 	if (window.onClear) {
 		window.onClear();
 	}
@@ -16,10 +17,27 @@ document.getElementById('clear').addEventListener("click", (e) => {
 	return false;
 });
 
+const trackEmptyResponseCheckBox = _ge('trackEmptyResponse');
+const trackOnlySuccessfulResponseCheckBox = _ge('trackOnlySuccessfulResponse');
+const mvtRequestPatternText = _ge('mvtRequestPattern');
 
-const trackEmptyResponseCheckBox = document.getElementById('trackEmptyResponse');
-const trackOnlySuccessfulResponseCheckBox = document.getElementById('trackOnlySuccessfulResponse');
-const mvtRequestPatternText = document.getElementById('mvtRequestPattern');
+let selectedRow = undefined;
+
+function clearDialogContent() {
+	tileContent.innerHTML = "";
+	tileMetadata.innerHTML = "";
+}
+
+function closeDialog() {
+	clearDialogContent();
+	body.classList.remove('withDialog');
+	if (selectedRow) {
+		selectedRow.classList.remove('selected');
+		selectedRow = undefined;
+	}
+}
+
+closeButton.onclick = closeDialog;
 
 //http://qaru.site/questions/88685/auto-scaling-inputtype-text-to-width-of-value
 function getTextWidth(text, fontSize, fontName, fontWeight) {
@@ -44,6 +62,24 @@ function tileToGeoJson(tile, z, x, y) {
 		}
 	});
 	return geoJsonLayers;
+}
+
+function getTileMetadata(entry) {
+	return {
+		requestHeaders: entry.requestHeaders,
+		responseHeaders: entry.responseHeaders,
+		statistics: entry.statistics,
+		url: entry.url,
+		x: entry.x,
+		y: entry.y,
+		z: entry.z
+	};
+}
+
+function showJSON(value, element) {
+	const viewer = new JSONViewer();	
+	element.appendChild(viewer.getContainer());
+	viewer.showJSON(value, null, 1);
 }
 
 function uint8ArrayToBase64(bytes) {
@@ -104,27 +140,33 @@ mvtRequestPatternText.addEventListener('keyup', () => {
 
 function onDocumentClick(e) {
 	const dialogIsHidden = window.getComputedStyle(dialog).getPropertyValue("display") === "none";
-	if (dialogIsHidden) {
-		let node = e.target;
-		while (node && node.role !== "row" && node.parentElement !== tilesTable) {
-			node = node.parentElement;
-		}
-		viewTileContainer.innerHTML = "";
-		dialog.style.display = "none";
-		if (node && node.entry) {
-			setTimeout(() => {
-				prepareGeoJsonTile(node.entry, (geoJsonOrJsonError) => {
-					dialog.style.display = "block";
-					viewTileContainer.innerHTML = createViewContent(node.entry, geoJsonOrJsonError);
-				});
-			}, 0)/*to see that previous content is cleared*/;
-		}
+
+	let node = e.target;
+	while (node && node.getAttribute('role') !== "row" && node.parentElement !== tilesTable) {
+		node = node.parentElement;
 	}
-	else {
-		if (e.target === dialog) {
-			viewTileContainer.innerHTML = "";
-			dialog.style.display = "none";
+
+	if (node && node.getAttribute('role') === "row" && node !== selectedRow && node.entry) {
+		clearDialogContent();
+
+		if (dialogIsHidden) {
+			body.classList.add('withDialog');
 		}
+
+		if (selectedRow) {
+			selectedRow.classList.remove('selected');
+		}
+
+		selectedRow = node;
+		node.classList.add('selected');
+
+		setTimeout(() => {
+			prepareGeoJsonTile(node.entry, (geoJsonOrJsonError) => {
+				showJSON(getTileMetadata(node.entry), tileMetadata);
+				showJSON(geoJsonOrJsonError, tileContent);
+				doAutoscrollableOperation();
+			});
+		}, 0)/*to see that previous content is cleared*/;
 	}
 }
 
@@ -290,30 +332,26 @@ function formatTime(dateString) {
 	return formatNumberLength(date.getUTCHours(), 2) + ":" + formatNumberLength(date.getUTCMinutes(), 2) + ":" + formatNumberLength(date.getUTCSeconds(), 2) + "." + formatNumberLength(date.getUTCMilliseconds(), 3);
 }
 
-function isNeedToScroll(scrollableElement) {
-	return Math.abs(scrollableElement.offsetHeight + scrollableElement.scrollTop - scrollableElement.scrollHeight) < 5;
-}
-
 window.onPendingEntry = function (entry) {
-	doAutoscroollableOperation(() => {
+	doAutoscrollableOperation(() => {
 		processPendingEntry(entry);
 	})
 };
 
 window.onFinishedEntry = function (entry) {
-	doAutoscroollableOperation(() => {
+	doAutoscrollableOperation(() => {
 		processFinishedEntry(entry);
 	})
 };
 
 window.onRemovedEntry = function (entry) {
-	doAutoscroollableOperation(() => {
+	doAutoscrollableOperation(() => {
 		processRemovedEntry(entry);
 	})
 };
 
 window.redrawEntries = function (entries) {
-	doAutoscroollableOperation(() => {
+	doAutoscrollableOperation(() => {
 		tilesTable.querySelectorAll('[role=row]')
 			.forEach((row) => row.remove());
 		entries.forEach((entry) => {
@@ -326,32 +364,15 @@ window.redrawEntries = function (entries) {
 };
 
 function processPendingEntry(entry) {
-	let rowNode, statusNode, urlNode, bytesNode, xNode, yNode, zNode, layersCountNode, featuresCountNode, startDateNode,
-		durationNode, nEndedNode;
+	let rowNode, statusNode, urlNode, layersCountNode;
 
 	tilesTable.appendChild(rowNode = toRow(document.createElement("div"), entry));
 	rowNode.appendChild(statusNode = toCell(document.createElement("div")));
-	rowNode.appendChild(zNode = toCell(document.createElement("div")));
-	rowNode.appendChild(xNode = toCell(document.createElement("div")));
-	rowNode.appendChild(yNode = toCell(document.createElement("div")));
-	rowNode.appendChild(bytesNode = toCell(document.createElement("div")));
 	rowNode.appendChild(urlNode = toCell(document.createElement("div")));
 	rowNode.appendChild(layersCountNode = toCell(document.createElement("div")));
-	rowNode.appendChild(featuresCountNode = toCell(document.createElement("div")));
-	rowNode.appendChild(startDateNode = toCell(document.createElement("div")));
-	rowNode.appendChild(nEndedNode = toCell(document.createElement("div")));
-	rowNode.appendChild(durationNode = toCell(document.createElement("div")));
 
 	statusNode.textContent = entry.status;
 	urlNode.appendChild(toMvtLink(entry));
-	zNode.textContent = String(entry.z);
-	xNode.textContent = String(entry.x);
-	yNode.textContent = String(entry.y);
-	startDateNode.textContent = String(entry.startOrder) + " | " + formatTime(entry.startedDateTime);
-	durationNode.textContent = String(entry.time ? window.prettyMilliseconds(Math.round(entry.time)) : "");
-	nEndedNode.textContent = String(entry.endOrder || "");
-
-	featuresCountNode.classList.add("wrap-content");
 	rowNode.classList.add("pending-tile");
 }
 
@@ -361,15 +382,9 @@ function processFinishedEntry(entry) {
 		return;
 	}
 	const statusNode = rowNode.children[0];
-	const bytesNode = rowNode.children[4];
-	const layersCountNode = rowNode.children[6];
-	const featuresCountNode = rowNode.children[7];
-	const nEndedNode = rowNode.children[9];
-	const durationNode = rowNode.children[10];
+	const layersCountNode = rowNode.children[2];
 
 	statusNode.textContent = entry.status;
-	bytesNode.textContent = String(entry.tileSize ? window.formatBytes(entry.tileSize) : "");
-	nEndedNode.textContent = String(entry.endOrder || "");
 
 	rowNode.classList.remove("pending-tile");
 
@@ -381,11 +396,6 @@ function processFinishedEntry(entry) {
 			}
 
 			layersCountNode.textContent = statistics.layersCount ? String(statistics.layersCount) : ""
-
-			const layersStatistics = statistics.byLayers;
-			featuresCountNode.textContent = Object.keys(layersStatistics).map(
-				(layerName) => layerName + ": " + layersStatistics[layerName].featuresCount
-			).join("\n")
 		}
 
 	}
@@ -402,13 +412,17 @@ function processRemovedEntry(entry) {
 	rowNode.remove();
 }
 
-function doAutoscroollableOperation(operation) {
-	const needToScroll = isNeedToScroll(tilesTable);
-	operation();
-	if (needToScroll && tilesTable.lastChild) {
-		const lastRow = tilesTable.lastChild;
-		if (lastRow && lastRow.firstChild && lastRow.firstChild.scrollIntoView) {
-			lastRow.firstChild.scrollIntoView();
-		}
+function isNeedToScroll(scrollableElement) {
+	return Math.abs(scrollableElement.offsetHeight + scrollableElement.scrollTop - scrollableElement.scrollHeight) < 5;
+}
+
+function doAutoscrollableOperation(operation) {
+	const needToScroll = selectedRow || isNeedToScroll(tilesTable);
+	operation && operation();
+
+	let scrollToRow = selectedRow || (tilesTable.lastChild);
+
+	if (needToScroll && scrollToRow && scrollToRow.firstChild && scrollToRow.firstChild.scrollIntoView) {
+		scrollToRow.firstChild.scrollIntoView({block: 'nearest'});
 	}
 }

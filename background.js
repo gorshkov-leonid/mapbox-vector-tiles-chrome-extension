@@ -1,6 +1,6 @@
 chrome.runtime.onInstalled.addListener(function () {
     chrome.storage.local.set({
-            mvtRequestPattern: ".*\\/(?<z>\\d+)\\/(?<x>\\d+)\\/(?<y>\\d+)\\.mvt[^\\/]*$",
+            mvtRequestPattern: ".*\\/(?<z>\\d+)-(?<x>\\d+)-(?<y>\\d+)\\.mvt[^\\/]*$",
             trackEmptyResponse: true,
             trackOnlySuccessfulResponse: false
         },
