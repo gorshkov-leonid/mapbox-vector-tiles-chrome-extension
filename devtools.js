@@ -112,8 +112,10 @@ chrome.storage.local.get(['trackEmptyResponse', 'trackOnlySuccessfulResponse', '
     chrome.devtools.network.onRequestFinished.addListener(
         function (httpEntry) {
             const responseHeaders = combineHeaders(httpEntry.response.headers);
+            const contentType = responseHeaders['content-type'] || responseHeaders['Content-Type'];
 
-            if (responseHeaders["content-type"] !== "application/vnd.mapbox-vector-tile") {
+            if (contentType !== 'application/vnd.mapbox-vector-tile' &&
+                contentType !== 'application/x-protobuf') {
                 return;
             }
 
@@ -216,11 +218,11 @@ chrome.storage.local.get(['trackEmptyResponse', 'trackOnlySuccessfulResponse', '
 
                 /*Content-Length is not equal to actual bytes count*/
                 // noinspection EqualityComparisonWithCoercionJS
-                if (content === undefined || (contentLengthHeader !== -1 && data.length !== contentLengthHeader)) {
-                    onWrongContent(pendingEntry, content, data, contentLengthHeader);
-                    notSuccessfulRequestFinished();
-                    return;
-                }
+                // if (content === undefined || (contentLengthHeader !== -1 && data.length !== contentLengthHeader)) {
+                //     onWrongContent(pendingEntry, content, data, contentLengthHeader);
+                //     notSuccessfulRequestFinished();
+                //     return;
+                // }
 
                 if (!data.length) {
                     emptyRequestFinished();

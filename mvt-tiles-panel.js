@@ -78,8 +78,8 @@ function getTileMetadata(entry) {
 
 function showJSON(value, element) {
 	const viewer = new JSONViewer();	
-	element.appendChild(viewer.getContainer());
 	viewer.showJSON(value, null, 1);
+	element.appendChild(viewer.getContainer());
 }
 
 function uint8ArrayToBase64(bytes) {
@@ -221,23 +221,6 @@ function prepareGeoJsonTile(entry, callback) {
 	});
 }
 
-function createViewContent(entry, geoJsonOrJsonError) {
-	const result = JSON.stringify(
-		entry,
-		(key, value) => {
-			if (key === 'extra') {
-				return undefined;
-			}
-			else if (key === 'tile') {
-				return geoJsonOrJsonError;
-			}
-			return value;
-		},
-		2
-	);
-	return result;
-}
-
 function toMvtLink(entry) {
 	const requestUrl = entry.url;
 	const a = document.createElement("a");
@@ -299,8 +282,13 @@ function toRow(div, entry) {
 	return div;
 }
 
-function toCell(div) {
+function toCell(div, cssClass) {
 	div.setAttribute("role", "cell");
+
+	if (cssClass) {
+		div.classList.add(cssClass);
+	}
+
 	return div;
 }
 
@@ -367,9 +355,9 @@ function processPendingEntry(entry) {
 	let rowNode, statusNode, urlNode, layersCountNode;
 
 	tilesTable.appendChild(rowNode = toRow(document.createElement("div"), entry));
-	rowNode.appendChild(statusNode = toCell(document.createElement("div")));
-	rowNode.appendChild(urlNode = toCell(document.createElement("div")));
-	rowNode.appendChild(layersCountNode = toCell(document.createElement("div")));
+	rowNode.appendChild(statusNode = toCell(document.createElement("div"), 'status'));
+	rowNode.appendChild(urlNode = toCell(document.createElement("div"), 'url'));
+	rowNode.appendChild(layersCountNode = toCell(document.createElement("div"), 'layers'));
 
 	statusNode.textContent = entry.status;
 	urlNode.appendChild(toMvtLink(entry));

@@ -88,6 +88,12 @@ body.withDialog #tilesTable {
     color: #e0a4a4;
 }
 
+#tilesTable .url {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
 #settings-panel {
     padding: 3px;
     position: relative;
