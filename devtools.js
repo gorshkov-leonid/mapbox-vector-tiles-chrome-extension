@@ -92,7 +92,7 @@ chrome.storage.local.get(['trackEmptyResponse', 'trackOnlySuccessfulResponse', '
         console.log("Mvt Request Pattern is invalid", r.mvtRequestPattern);
     }
 
-    chrome.devtools.panels.create("Mapbox Vector Tiles", "images/16.png", "mvt-tiles-panel.html", function (p) {
+    chrome.devtools.panels.create("MVT Requests", "images/16.png", "mvt-tiles-panel.html", function (p) {
         p.onShown.addListener((w) => {
             panel = w;
             panel.onClear = () => {
@@ -156,7 +156,7 @@ chrome.storage.local.get(['trackEmptyResponse', 'trackOnlySuccessfulResponse', '
                 statistics: undefined,
                 tile: undefined,
                 endOrder: undefined,
-                extra: {isPending: true, isValid: false, isEmpty: false}
+                extra: { isPending: true, isValid: false, isEmpty: false }
             };
             onPendingRequest(pendingEntry);
 
@@ -171,8 +171,8 @@ chrome.storage.local.get(['trackEmptyResponse', 'trackOnlySuccessfulResponse', '
                 const isValid = isOk || isNoContent;
 
                 const layersStatistics = {};
-                const statistics = {layersCount: 0, featuresCount: 0, byLayers: layersStatistics /* featuresCount */};
-                const extra = {isPending: false, isValid: isValid, isEmpty: isNoContent};
+                const statistics = { layersCount: 0, featuresCount: 0, byLayers: layersStatistics /* featuresCount */ };
+                const extra = { isPending: false, isValid: isValid, isEmpty: isNoContent };
 
                 function requestFinished() {
                     onFinishedRequest(pendingEntry, {
@@ -216,7 +216,8 @@ chrome.storage.local.get(['trackEmptyResponse', 'trackOnlySuccessfulResponse', '
                 const contentLengthHeader = Number(responseHeaders["content-length"] || responseHeaders["Content-Length"] || -1);
                 const data = Uint8Array.from(atob(content), c => c.charCodeAt(0));
 
-                /*Content-Length is not equal to actual bytes count*/
+                /* Content-Length is not equal to actual bytes count */
+                // Expected when gzip compression is used
                 // noinspection EqualityComparisonWithCoercionJS
                 // if (content === undefined || (contentLengthHeader !== -1 && data.length !== contentLengthHeader)) {
                 //     onWrongContent(pendingEntry, content, data, contentLengthHeader);
