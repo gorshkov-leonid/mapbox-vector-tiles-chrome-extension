@@ -7,22 +7,25 @@ html, body {
     color: var(--color-text-primary)
 }
 
+body {
+    display: grid;
+    grid-template-rows: auto auto 1fr;
+}
+
 #tilesTable {
     display: grid;
     /* status, url, # layers */
-    grid-template-columns: 50px auto 60px;
+    grid-template-columns: auto 1fr auto;
     box-sizing: border-box;
     overflow-y: auto;
 
-    height: auto;
-    max-height: calc(100% - 30px);
     user-select: none;
     border-top: solid var(--color-background-elevation-2) 1px;
     border-left: solid var(--color-background-elevation-2) 1px;
 }
 
 body.withDialog #tilesTable {
-    height: 100px;
+    max-height: 100px;
 }
 
 #tilesTable [role=header], #tilesTable [role=cell] {
@@ -131,7 +134,6 @@ body.withDialog #tilesTable {
     box-sizing: border-box;
     overflow: auto;
     height: auto;
-    max-height: calc(100% - 130px);
 }
 
 body.withDialog #viewTileDialog {
