@@ -2,6 +2,7 @@
 <html>
 
 <head>
+	<link rel="stylesheet" href="lib/themeColors.css" />
 	<link rel="stylesheet" href="mvt-tiles-panel.css" />
 	<link rel="stylesheet" href="lib/json-viewer.css" />
 	<script src="lib/pbf-3.2.0.js"></script>
@@ -28,9 +29,9 @@
 		</div>
 		<div class="setting-control right">
 			<ul class="legend">
-				<li class="success"><span style="color: #000000;">Success</span></li>
-				<li class="empty-tile"><span style="color: #000000;">Success but Empty</span></li>
-				<li class="no-success-tile"><span style="color: #000000;">No Success or Cancelled</span></li>
+				<li class="success"><span>Success</span></li>
+				<li class="empty-tile"><span>Success but Empty</span></li>
+				<li class="no-success-tile"><span>No Success or Cancelled</span></li>
 			</ul>
 		</div>
 	</div>
@@ -42,9 +43,9 @@
 	</div>
 
 	<div id="viewTileDialog">
-		<span class="viewTileDialog_closeButton">&times;</span>
 		<div id="viewTileDialogContent">
 			<div id="viewTileContainer">
+				<span class="viewTileDialog_closeButton">&times;</span>
 				<h2>Metadata:</h2>
 				<div id="tileMetadata"></div>
 				<h2>Tile content:</h2>

@@ -1,0 +1,14 @@
+extension/*
+images/*.png
+lib/*
+background.js
+devtools.html
+devtools.js
+LICENSE
+manifest.json
+mvt-tiles-panel.css
+mvt-tiles-panel.html
+mvt-tiles-panel.js
+popup.html
+popup.js
+README.md

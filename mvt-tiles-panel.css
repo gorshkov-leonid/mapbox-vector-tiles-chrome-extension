@@ -3,6 +3,8 @@ html, body {
     margin: 0;
     padding: 0;
     font-family: ".SFNSDisplay-Regular", "Helvetica Neue", "Lucida Grande", sans-serif;
+    background: var(--color-background);
+    color: var(--color-text-primary)
 }
 
 #tilesTable {
@@ -15,8 +17,8 @@ html, body {
     height: auto;
     max-height: calc(100% - 30px);
     user-select: none;
-    border-top: solid #CCC 1px;
-    border-left: solid #CCC 1px;
+    border-top: solid var(--color-background-elevation-2) 1px;
+    border-left: solid var(--color-background-elevation-2) 1px;
 }
 
 body.withDialog #tilesTable {
@@ -24,8 +26,8 @@ body.withDialog #tilesTable {
 }
 
 #tilesTable [role=header], #tilesTable [role=cell] {
-    border-bottom: solid #CCC 1px;
-    border-right: solid #CCC 1px;
+    border-bottom: solid var(--color-background-elevation-2) 1px;
+    border-right: solid var(--color-background-elevation-2) 1px;
     white-space: nowrap;
     padding: 1px 4px;
 }
@@ -33,7 +35,7 @@ body.withDialog #tilesTable {
 #tilesTable [role=header] {
     position: sticky;
     top: 0;
-    background: rgb(243, 243, 243);
+    background: var(--color-background-highlight);
 }
 
 #tilesTable [role=header].wrap-content, #tilesTable [role=cell].wrap-content {
@@ -45,23 +47,28 @@ body.withDialog #tilesTable {
 }
 
 #tilesTable [role=row].pending-tile [role=cell] {
-    color: #bebcdd;
+    color: var(--color-text-disabled);
 }
 
 #tilesTable [role=row].empty-tile [role=cell] {
-    color: #bebcdd;
+    color: var(--color-text-disabled);
 }
 
 #tilesTable [role=row].no-success-tile [role=cell] {
-    color: #e0a4a4;
+    color: var(--color-accent-red);
 }
 
 #tilesTable [role=row]:hover [role=cell] {
-    background-color: #ffa;
+    background-color: var(--color-background-hover);
 }
 
 #tilesTable [role=row].selected [role=cell] {
-    background-color: #1e90ff;
+    background-color: var(--color-background-selected);
+}
+
+#tilesTable [role=row] a,
+.setting-control a {
+    color: var(--color-link);
 }
 
 #tilesTable [role=row].empty-tile a,
@@ -76,7 +83,7 @@ body.withDialog #tilesTable {
 #tilesTable [role=row].pending-tile a:hover,
 #tilesTable [role=row].pending-tile a:active,
 #tilesTable [role=row].pending-tile a:visited {
-    color: #bebcdd;
+    color: var(--color-text-disabled);
 }
 
 #tilesTable [role=row].no-success-tile a,
@@ -85,7 +92,7 @@ body.withDialog #tilesTable {
 #tilesTable [role=row].no-success-tile a:hover,
 #tilesTable [role=row].no-success-tile a:active,
 #tilesTable [role=row].no-success-tile a:visited {
-    color: #e0a4a4;
+    color: var(--color-accent-red);
 }
 
 #tilesTable .url {
@@ -118,11 +125,6 @@ body.withDialog #tilesTable {
     vertical-align: middle;
 }
 
-.setting-control.right {
-    position: absolute;
-    right: 0;
-}
-
 /*modal dialog*/
 #viewTileDialog {
     display: none;
@@ -130,8 +132,6 @@ body.withDialog #tilesTable {
     overflow: auto;
     height: auto;
     max-height: calc(100% - 130px);
-    background-color: rgb(0, 0, 0);
-    background-color: rgba(0, 0, 0, 0.4);
 }
 
 body.withDialog #viewTileDialog {
@@ -139,8 +139,7 @@ body.withDialog #viewTileDialog {
 }
 
 #viewTileDialogContent {
-    background-color: #fefefe;
-    border: 1px solid #888;
+    border: 1px solid var(--color-details-hairline);
     height: 100%;
     box-sizing: border-box;
     position: relative;
@@ -148,18 +147,17 @@ body.withDialog #viewTileDialog {
 }
 
 .viewTileDialog_closeButton {
-    color: #aaaaaa;
+    color: var(--color-text-secondary);
     font-size: 28px;
     line-height: 28px;
     font-weight: bold;
-    top: 125px;
     right: 20px;
-    position: absolute;
+    position: fixed;
     z-index: 1;
 }
 
 .viewTileDialog_closeButton:hover, .viewTileDialog_closeButton:focus {
-    color: #000;
+    color: var(--color-text-primary);
     text-decoration: none;
     cursor: pointer;
 }
@@ -207,14 +205,14 @@ ul li:before {
 }
 
 ul li.success:before {
-    background: #000000;
+    background: var(--color-text-primary);
 }
 
 ul li.empty-tile:before {
-    background: #bebcdd;
+    background: var(--color-text-disabled);
 }
 
 ul li.no-success-tile:before {
-    background: #e0a4a4;
+    background: var(--color-accent-red);
 }
 

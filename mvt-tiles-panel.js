@@ -8,6 +8,11 @@ const tileMetadata = _ge('tileMetadata');
 const dialog = _ge('viewTileDialog');
 const closeButton = document.getElementsByClassName("viewTileDialog_closeButton")[0];
 
+if (chrome.devtools.panels.themeName === 'dark') {
+	document.querySelector('html').classList.add('-theme-with-dark-background');
+}
+// document.querySelector('html').classList.add(themeClass);
+
 document.addEventListener("click", onDocumentClick);
 _ge('clear').addEventListener("click", (e) => {
 	if (window.onClear) {

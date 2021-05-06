@@ -1,5 +1,5 @@
 .json-viewer {
-	color: #000;
+	color: var(--color-text-primary);
 	padding-left: 20px;
 }
 
@@ -8,6 +8,7 @@
 }
 
 .json-viewer .link-bar a {
+	color: var(--color-link);
 	padding: 0 4px;
 }
 
@@ -15,7 +16,7 @@
 	list-style-type: none;
 	margin: 0;
 	margin: 0 0 0 1px;
-	border-left: 1px dotted #ccc;
+	border-left: 1px dotted var(--color-details-hairline);
 	padding-left: 2em;
 }
 
@@ -24,34 +25,34 @@
 }
 
 .json-viewer .type-string {
-	color: #0B7500;
+	color: var(--color-syntax-6);
 }
 
 .json-viewer .type-date {
-	color: #CB7500;
+	color: var(--color-syntax-4);
 }
 
 .json-viewer .type-boolean {
-	color: #1A01CC;
+	color: var(--color-syntax-3);
 	font-weight: bold;
 }
 
 .json-viewer .type-number {
-	color: #1A01CC;
+	color: var(--color-syntax-3);
 }
 
 .json-viewer .type-null, .json-viewer .type-undefined {
-	color: #90a;
+	color: var(--color-syntax-2);
 }
 
 .json-viewer a.list-link {
-	color: #000;
+	color: var(--color-text-primary);
 	text-decoration: none;
 	position: relative;
 }
 
 .json-viewer a.list-link:before {
-	color: #aaa;
+	color: var(--color-text-secondary);
 	content: "\25BC";
 	position: absolute;
 	display: inline-block;
@@ -68,7 +69,7 @@
 }
 
 .json-viewer .items-ph {
-	color: #aaa;
+	color: var(--color-text-secondary);
 	padding: 0 1em;
 }
 
